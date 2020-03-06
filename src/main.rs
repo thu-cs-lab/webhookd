@@ -31,7 +31,10 @@ struct Project {
 }
 
 async fn spawn_process(project: Project) {
-    info!("spawning {:?} in {}", project.exec, project.working_directory);
+    info!(
+        "spawning {:?} in {}",
+        project.exec, project.working_directory
+    );
     let status = Command::new("/bin/sh")
         .arg("-c")
         .arg(&project.exec)
@@ -48,9 +51,15 @@ async fn handler(
     body: web::Json<Value>,
     config: web::Data<Config>,
 ) -> HttpResponse {
-    debug!("got json body: {:?}", body);
+    debug!("Got json body: {:?}", body);
+    let action = body
+        .get("object_kind")
+        .and_then(|obj| obj.as_str())
+        .unwrap_or("unknown");
+    info!("Received hook: {}", action);
     let path = String::from(req.path());
     let headers = req.headers();
+    let mut triggered = 0;
     for project in &config.project {
         if project.endpoint.is_none() || project.endpoint == Some(path.clone()) {
             // found
@@ -73,10 +82,15 @@ async fn handler(
                     continue;
                 }
             }
+            if action != project.event {
+                continue;
+            }
             info!("Triggering project {}", project.name);
             actix::spawn(spawn_process(project.clone()));
+            triggered += 1;
         }
     }
+    info!("{} projects are triggered.", triggered);
     HttpResponse::Ok().body("")
 }
 
