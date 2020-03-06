@@ -6,4 +6,6 @@ event = "push"
 exec = "echo $PWD"
 working_directory = "REDACTED"
 endpoint = "/" # optional, match the url path when set
-token = "REDACTED" optional, match X-Gitlab-Token header when set
+token = "REDACTED" # optional, match X-Gitlab-Token header when set
+stdout = "stdout.log" # optional, append stdout to file
+stderr = "stderr.log" # optional, append stderr to file

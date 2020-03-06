@@ -2,10 +2,10 @@ use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer};
 use log::*;
 use serde_derive::{Deserialize, Serialize};
 use serde_json::Value;
-use std::fs::File;
-use std::io::Read;
+use std::fs::{File, OpenOptions};
+use std::io::{Read, Write};
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use std::process::Command;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -28,6 +28,8 @@ struct Project {
     event: String,
     exec: String,
     working_directory: String,
+    stdout: Option<String>,
+    stderr: Option<String>,
 }
 
 async fn spawn_process(project: Project) {
@@ -35,15 +37,53 @@ async fn spawn_process(project: Project) {
         "spawning {:?} in {}",
         project.exec, project.working_directory
     );
-    let status = Command::new("/bin/sh")
+    let output = Command::new("/bin/sh")
         .arg("-c")
         .arg(&project.exec)
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
         .current_dir(&project.working_directory)
-        .status();
-    info!("process {:?} exited with {:?}", project.exec, status);
+        .output();
+    match output {
+        Ok(result) => {
+            info!("Process {:?} exited with {:?}", project.exec, result.status);
+            if let Some(stdout_path) = project.stdout {
+                match OpenOptions::new().append(true).open(&stdout_path) {
+                    Ok(mut stdout_file) => match stdout_file.write_all(&result.stdout) {
+                        Ok(()) => info!("Stdout of process {:?} logged", project.exec),
+                        Err(err) => warn!(
+                            "Can't write stdout for project {:?}: {:?}",
+                            project.name, err
+                        ),
+                    },
+                    Err(err) => {
+                        warn!(
+                            "Can't open file {} for project {}: {:?}",
+                            stdout_path, project.name, err
+                        );
+                    }
+                }
+            }
+            if let Some(stderr_path) = project.stderr {
+                match OpenOptions::new().append(true).open(&stderr_path) {
+                    Ok(mut stderr_file) => match stderr_file.write_all(&result.stderr) {
+                        Ok(()) => info!("Stderr of process {:?} logged", project.exec),
+                        Err(err) => warn!(
+                            "Can't write stderr for project {:?}: {:?}",
+                            project.name, err
+                        ),
+                    },
+                    Err(err) => {
+                        warn!(
+                            "Can't open file {} for project {}: {:?}",
+                            stderr_path, project.name, err
+                        );
+                    }
+                }
+            }
+        }
+        Err(err) => {
+            warn!("Process {:?} failed to spawn with {:?}", project.exec, err);
+        }
+    }
 }
 
 async fn handler(
