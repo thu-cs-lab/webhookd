@@ -14,8 +14,21 @@ See `example.toml` for usage.
 
 ## Usage
 
-Run:
+Run webhookd manually:
 
 ```bash
 > RUST_LOG=info webhookd --config config.toml
 ```
+
+Run webhookd in systemd:
+
+```bash
+> sudo systemctl edit webhookd
+# Add the following lines if needed
+[Service]
+User=nobody
+Group=nobody
+Environment=$WEBHOOKD_CONFIG=/path/to/config.toml$
+```
+
+Then, run `sudo systemctl enable --now webhookd` to activate.
