@@ -1,0 +1,9 @@
+listen_addr = "0.0.0.0:8000"
+
+[[project]]
+name = "REDACTED"
+event = "push"
+endpoint = "/"
+token = "REDACTED"
+exec = "echo $PWD"
+working_directory = "REDACTED"
