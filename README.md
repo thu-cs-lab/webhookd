@@ -6,7 +6,14 @@ A simple gitlab web hooks daemon. Run scripts whenever hook is triggered.
 
 There are two ways:
 1. Run `cargo install webhookd` to install webhookd.
-2. Install `cargo-deb` first, then run `cargo deb --install`.
+2. Use `cargo-deb`:
+
+```
+> cargo install cargo-deb
+> git clone https://github.com/jiegec/webhookd.git
+> cd webhookd
+> cargo deb --install
+```
 
 ## Configuration
 
