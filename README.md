@@ -35,7 +35,7 @@ Run webhookd in systemd:
 [Service]
 User=nobody
 Group=nobody
-Environment=$WEBHOOKD_CONFIG=/path/to/config.toml$
+Environment="WEBHOOKD_CONFIG=/path/to/config.toml"
 ```
 
 Then, run `sudo systemctl enable --now webhookd` to activate.
