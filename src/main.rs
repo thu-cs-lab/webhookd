@@ -46,7 +46,11 @@ async fn spawn_process(project: Project) {
         Ok(result) => {
             info!("Process {:?} exited with {:?}", project.exec, result.status);
             if let Some(stdout_path) = project.stdout {
-                match OpenOptions::new().append(true).open(&stdout_path) {
+                match OpenOptions::new()
+                    .append(true)
+                    .create(true)
+                    .open(&stdout_path)
+                {
                     Ok(mut stdout_file) => match stdout_file.write_all(&result.stdout) {
                         Ok(()) => info!("Stdout of process {:?} logged", project.exec),
                         Err(err) => warn!(
@@ -63,7 +67,11 @@ async fn spawn_process(project: Project) {
                 }
             }
             if let Some(stderr_path) = project.stderr {
-                match OpenOptions::new().append(true).open(&stderr_path) {
+                match OpenOptions::new()
+                    .append(true)
+                    .create(true)
+                    .open(&stderr_path)
+                {
                     Ok(mut stderr_file) => match stderr_file.write_all(&result.stderr) {
                         Ok(()) => info!("Stderr of process {:?} logged", project.exec),
                         Err(err) => warn!(
