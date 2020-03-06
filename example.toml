@@ -1,9 +1,9 @@
-listen_addr = "0.0.0.0:8000"
+listen_addr = "0.0.0.0:8000" # optional
 
 [[project]]
 name = "REDACTED"
 event = "push"
-endpoint = "/"
-token = "REDACTED"
 exec = "echo $PWD"
 working_directory = "REDACTED"
+endpoint = "/" # optional, match the url path when set
+token = "REDACTED" optional, match X-Gitlab-Token header when set
