@@ -3,9 +3,10 @@ use log::*;
 use serde_derive::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs::{File, OpenOptions};
-use std::io::{Read, Write};
+use std::io::Read;
+use std::os::unix::io::{AsRawFd, FromRawFd};
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{Command, Stdio};
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -37,61 +38,59 @@ async fn spawn_process(project: Project) {
         "spawning {:?} in {}",
         project.exec, project.working_directory
     );
-    let output = Command::new("/bin/sh")
-        .arg("-c")
-        .arg(&project.exec)
-        .current_dir(&project.working_directory)
-        .output();
-    match output {
-        Ok(result) => {
-            info!("Process {:?} exited with {:?}", project.exec, result.status);
-            if let Some(stdout_path) = project.stdout {
-                match OpenOptions::new()
-                    .append(true)
-                    .create(true)
-                    .open(&stdout_path)
-                {
-                    Ok(mut stdout_file) => match stdout_file.write_all(&result.stdout) {
-                        Ok(()) => info!("Stdout of process {:?} logged", project.exec),
-                        Err(err) => warn!(
-                            "Can't write stdout for project {:?}: {:?}",
-                            project.name, err
-                        ),
-                    },
-                    Err(err) => {
-                        warn!(
-                            "Can't open file {} for project {}: {:?}",
-                            stdout_path, project.name, err
-                        );
-                    }
-                }
+
+    let mut stdout_file = None;
+    if let Some(stdout_path) = &project.stdout {
+        match OpenOptions::new()
+            .append(true)
+            .create(true)
+            .open(&stdout_path)
+        {
+            Ok(file) => stdout_file = Some(file),
+            Err(err) => {
+                warn!(
+                    "Can't open file {} for project {}: {:?}",
+                    stdout_path, project.name, err
+                );
             }
-            if let Some(stderr_path) = project.stderr {
-                match OpenOptions::new()
-                    .append(true)
-                    .create(true)
-                    .open(&stderr_path)
-                {
-                    Ok(mut stderr_file) => match stderr_file.write_all(&result.stderr) {
-                        Ok(()) => info!("Stderr of process {:?} logged", project.exec),
-                        Err(err) => warn!(
-                            "Can't write stderr for project {:?}: {:?}",
-                            project.name, err
-                        ),
-                    },
-                    Err(err) => {
-                        warn!(
-                            "Can't open file {} for project {}: {:?}",
-                            stderr_path, project.name, err
-                        );
-                    }
-                }
-            }
-        }
-        Err(err) => {
-            warn!("Process {:?} failed to spawn with {:?}", project.exec, err);
         }
     }
+    let stdout = if let Some(file) = stdout_file {
+        unsafe { Stdio::from_raw_fd(file.as_raw_fd()) }
+    } else {
+        Stdio::null()
+    };
+
+    let mut stderr_file = None;
+    if let Some(stderr_path) = &project.stderr {
+        match OpenOptions::new()
+            .append(true)
+            .create(true)
+            .open(&stderr_path)
+        {
+            Ok(file) => stderr_file = Some(file),
+            Err(err) => {
+                warn!(
+                    "Can't open file {} for project {}: {:?}",
+                    stderr_path, project.name, err
+                );
+            }
+        }
+    }
+    let stderr = if let Some(file) = stderr_file {
+        unsafe { Stdio::from_raw_fd(file.as_raw_fd()) }
+    } else {
+        Stdio::null()
+    };
+
+    let result = Command::new("/bin/sh")
+        .arg("-c")
+        .arg(&project.exec)
+        .stdout(stdout)
+        .stderr(stderr)
+        .current_dir(&project.working_directory)
+        .status();
+    info!("Process {:?} exited with {:?}", project.exec, result);
 }
 
 async fn handler(
