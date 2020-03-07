@@ -4,7 +4,6 @@ use serde_derive::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs::{File, OpenOptions};
 use std::io::Read;
-use std::os::unix::io::{AsRawFd, FromRawFd};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use structopt::StructOpt;
@@ -56,7 +55,7 @@ async fn spawn_process(project: Project) {
         }
     }
     let stdout = if let Some(file) = stdout_file {
-        unsafe { Stdio::from_raw_fd(file.as_raw_fd()) }
+        Stdio::from(file)
     } else {
         Stdio::null()
     };
@@ -78,7 +77,7 @@ async fn spawn_process(project: Project) {
         }
     }
     let stderr = if let Some(file) = stderr_file {
-        unsafe { Stdio::from_raw_fd(file.as_raw_fd()) }
+        Stdio::from(file)
     } else {
         Stdio::null()
     };
