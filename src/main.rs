@@ -32,56 +32,39 @@ struct Project {
     stderr: Option<String>,
 }
 
+fn get_stdio(project: &Project, path: &Option<String>) -> Stdio {
+    let mut stdio_file = None;
+    if let Some(stdio_path) = path {
+        match OpenOptions::new()
+            .append(true)
+            .create(true)
+            .open(&stdio_path)
+        {
+            Ok(file) => stdio_file = Some(file),
+            Err(err) => {
+                warn!(
+                    "Can't open file {} for project {}: {:?}",
+                    stdio_path, project.name, err
+                );
+            }
+        }
+    }
+    let stdio = if let Some(file) = stdio_file {
+        Stdio::from(file)
+    } else {
+        Stdio::null()
+    };
+    stdio
+}
+
 async fn spawn_process(project: Project) {
     info!(
         "spawning {:?} in {}",
         project.exec, project.working_directory
     );
 
-    let mut stdout_file = None;
-    if let Some(stdout_path) = &project.stdout {
-        match OpenOptions::new()
-            .append(true)
-            .create(true)
-            .open(&stdout_path)
-        {
-            Ok(file) => stdout_file = Some(file),
-            Err(err) => {
-                warn!(
-                    "Can't open file {} for project {}: {:?}",
-                    stdout_path, project.name, err
-                );
-            }
-        }
-    }
-    let stdout = if let Some(file) = stdout_file {
-        Stdio::from(file)
-    } else {
-        Stdio::null()
-    };
-
-    let mut stderr_file = None;
-    if let Some(stderr_path) = &project.stderr {
-        match OpenOptions::new()
-            .append(true)
-            .create(true)
-            .open(&stderr_path)
-        {
-            Ok(file) => stderr_file = Some(file),
-            Err(err) => {
-                warn!(
-                    "Can't open file {} for project {}: {:?}",
-                    stderr_path, project.name, err
-                );
-            }
-        }
-    }
-    let stderr = if let Some(file) = stderr_file {
-        Stdio::from(file)
-    } else {
-        Stdio::null()
-    };
-
+    let stdout = get_stdio(&project, &project.stdout);
+    let stderr = get_stdio(&project, &project.stderr);
     let result = Command::new("/bin/sh")
         .arg("-c")
         .arg(&project.exec)
