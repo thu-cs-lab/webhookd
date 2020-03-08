@@ -2,10 +2,13 @@ listen_addr = "0.0.0.0:8000" # optional
 
 [[project]]
 name = "REDACTED"
+# For GitLab, it is matched against "object_kind"
+# For GitHub, it is matched against X-GitHub-Event header
 event = "push"
 exec = "echo $PWD"
 working_directory = "REDACTED"
 endpoint = "/" # optional, match the url path when set
-token = "REDACTED" # optional, match X-Gitlab-Token header when set
 stdout = "stdout.log" # optional, append stdout to file
 stderr = "stderr.log" # optional, append stderr to file
+token = "REDACTED" # optional, match X-Gitlab-Token header when set
+secret = "REDACTED" # optional, verify X-Hub-Signature when set

@@ -23,13 +23,77 @@ struct Config {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 struct Project {
     name: String,
-    endpoint: Option<String>,
-    token: Option<String>,
     event: String,
     exec: String,
     working_directory: String,
+    endpoint: Option<String>,
     stdout: Option<String>,
     stderr: Option<String>,
+    // gitlab
+    token: Option<String>,
+    // github
+    secret: Option<String>,
+}
+
+enum Site {
+    GitHub,
+    GitLab,
+}
+
+impl Site {
+    fn verify(&self, req: &HttpRequest, project: &Project) -> bool {
+        use Site::*;
+        let headers = req.headers();
+        match self {
+            GitHub => {
+                // TODO
+                true
+            }
+            GitLab => {
+                if let Some(token) = &project.token {
+                    if let Some(header) = headers.get("X-Gitlab-Token") {
+                        if let Ok(s) = header.to_str() {
+                            if s != token {
+                                warn!(
+                                    "X-Gitlab-Token mismatch for project {}, skipping",
+                                    project.name
+                                );
+                                return false;
+                            }
+                        } else {
+                            warn!("X-Gitlab-Token is bad for {}, skipping", project.name);
+                            return false;
+                        }
+                    } else {
+                        warn!("X-Gitlab-Token not found for {}, skipping", project.name);
+                        return false;
+                    }
+                }
+                true
+            }
+        }
+    }
+
+    fn get_event<'a>(&self, req: &'a HttpRequest, body: &'a web::Json<Value>) -> &'a str {
+        use Site::*;
+        match self {
+            GitHub => {
+                if let Some(header) = req.headers().get("X-GitHub-Event") {
+                    if let Ok(s) = header.to_str() {
+                        s
+                    } else {
+                        "unknown"
+                    }
+                } else {
+                    "unknown"
+                }
+            }
+            GitLab => body
+                .get("object_kind")
+                .and_then(|obj| obj.as_str())
+                .unwrap_or("unknown"),
+        }
+    }
 }
 
 fn get_stdio(project: &Project, path: &Option<String>) -> Stdio {
@@ -81,35 +145,23 @@ async fn handler(
     config: web::Data<Config>,
 ) -> HttpResponse {
     debug!("Got json body: {:?}", body);
-    let action = body
-        .get("object_kind")
-        .and_then(|obj| obj.as_str())
-        .unwrap_or("unknown");
+    let headers = req.headers();
+    let site = if headers.get("X-Gitlab-Token").is_some() {
+        Site::GitLab
+    } else if headers.get("X-GitHub-Event").is_some() {
+        Site::GitHub
+    } else {
+        return HttpResponse::Ok().body("");
+    };
+    let action = site.get_event(&req, &body);
     info!("Received hook: {}", action);
     let path = String::from(req.path());
-    let headers = req.headers();
     let mut triggered = 0;
     for project in &config.project {
         if project.endpoint.is_none() || project.endpoint == Some(path.clone()) {
             // found
-            if let Some(token) = &project.token {
-                if let Some(header) = headers.get("X-Gitlab-Token") {
-                    if let Ok(s) = header.to_str() {
-                        if s != token {
-                            warn!(
-                                "X-Gitlab-Token mismatch for project {}, skipping",
-                                project.name
-                            );
-                            continue;
-                        }
-                    } else {
-                        warn!("X-Gitlab-Token is bad for {}, skipping", project.name);
-                        continue;
-                    }
-                } else {
-                    warn!("X-Gitlab-Token not found for {}, skipping", project.name);
-                    continue;
-                }
+            if !site.verify(&req, &project) {
+                continue;
             }
             if action != project.event {
                 continue;
