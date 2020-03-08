@@ -1,7 +1,9 @@
 use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer};
+use hex;
 use log::*;
+use ring::{digest, hmac, rand};
 use serde_derive::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{from_slice, Value};
 use std::fs::{File, OpenOptions};
 use std::io::Read;
 use std::path::PathBuf;
@@ -41,12 +43,49 @@ enum Site {
 }
 
 impl Site {
-    fn verify(&self, req: &HttpRequest, project: &Project) -> bool {
+    fn verify(&self, req: &HttpRequest, bytes: &web::Bytes, project: &Project) -> bool {
         use Site::*;
         let headers = req.headers();
         match self {
             GitHub => {
                 // TODO
+                if let Some(secret) = &project.secret {
+                    if let Some(header) = headers.get("X-Hub-Signature") {
+                        if let Ok(s) = header.to_str() {
+                            if !s.starts_with("sha1=") {
+                                warn!("X-Hub-Signature is invalid for {}, skipping", project.name);
+                                return false;
+                            }
+                            if let Ok(signature) = hex::decode(&s.as_bytes()[5..]) {
+                                let key = hmac::Key::new(
+                                    hmac::HMAC_SHA1_FOR_LEGACY_USE_ONLY,
+                                    secret.as_bytes(),
+                                );
+                                if hmac::verify(&key, bytes, &signature).is_ok() {
+                                    return true;
+                                } else {
+                                    warn!(
+                                        "X-Hub-Signature HMAC verification failed for {}, skipping",
+                                        project.name
+                                    );
+                                    return false;
+                                }
+                            } else {
+                                warn!(
+                                    "X-Hub-Signature is not valid hex string for {}, skipping",
+                                    project.name
+                                );
+                                return false;
+                            }
+                        } else {
+                            warn!("X-Hub-Signature is invalid for {}, skipping", project.name);
+                            return false;
+                        }
+                    } else {
+                        warn!("X-Hub-Signature not found for {}, skipping", project.name);
+                        return false;
+                    }
+                }
                 true
             }
             GitLab => {
@@ -61,7 +100,7 @@ impl Site {
                                 return false;
                             }
                         } else {
-                            warn!("X-Gitlab-Token is bad for {}, skipping", project.name);
+                            warn!("X-Gitlab-Token is invalid for {}, skipping", project.name);
                             return false;
                         }
                     } else {
@@ -74,7 +113,7 @@ impl Site {
         }
     }
 
-    fn get_event<'a>(&self, req: &'a HttpRequest, body: &'a web::Json<Value>) -> &'a str {
+    fn get_event<'a>(&self, req: &'a HttpRequest, body: &'a Value) -> &'a str {
         use Site::*;
         match self {
             GitHub => {
@@ -139,11 +178,13 @@ async fn spawn_process(project: Project) {
     info!("Process {:?} exited with {:?}", project.exec, result);
 }
 
-async fn handler(
-    req: HttpRequest,
-    body: web::Json<Value>,
-    config: web::Data<Config>,
-) -> HttpResponse {
+async fn handler(req: HttpRequest, bytes: web::Bytes, config: web::Data<Config>) -> HttpResponse {
+    let body: Value = if let Ok(body) = from_slice(&bytes) {
+        body
+    } else {
+        warn!("Invalid body");
+        return HttpResponse::Ok().body("");
+    };
     debug!("Got json body: {:?}", body);
     let headers = req.headers();
     let site = if headers.get("X-Gitlab-Token").is_some() {
@@ -160,7 +201,7 @@ async fn handler(
     for project in &config.project {
         if project.endpoint.is_none() || project.endpoint == Some(path.clone()) {
             // found
-            if !site.verify(&req, &project) {
+            if !site.verify(&req, &bytes, &project) {
                 continue;
             }
             if action != project.event {

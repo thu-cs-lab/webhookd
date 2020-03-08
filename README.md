@@ -1,6 +1,6 @@
 # webhookd
 
-A simple gitlab web hooks daemon. Run scripts whenever hook is triggered.
+A simple GitLab/GitHub web hooks daemon. Run scripts whenever hook is triggered.
 
 ## Installation
 
@@ -17,7 +17,7 @@ There are two ways:
 
 ## Configuration
 
-See `example.toml` for usage.
+See `example.toml` for usage. Then, register this webhook in GitLab/GitHub. Currently only json is supported.
 
 ## Usage
 

@@ -12,3 +12,12 @@ stdout = "stdout.log" # optional, append stdout to file
 stderr = "stderr.log" # optional, append stderr to file
 token = "REDACTED" # optional, match X-Gitlab-Token header when set
 secret = "REDACTED" # optional, verify X-Hub-Signature when set
+
+# A complete example
+[[project]]
+name = "github_ping"
+event = "ping"
+exec = "echo test"
+working_directory = "/"
+stdout = "stdout.log"
+secret = "secret"
