@@ -1,6 +1,6 @@
 [package]
 name = "webhookd"
-version = "0.1.2"
+version = "0.2.0"
 authors = ["Jiajie Chen <jiegec@qq.com>"]
 edition = "2018"
 description = "GitLab/GitHub webhook daemon to run scripts on trigger"

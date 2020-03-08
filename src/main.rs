@@ -1,7 +1,7 @@
 use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer};
 use hex;
 use log::*;
-use ring::{digest, hmac, rand};
+use ring::hmac;
 use serde_derive::{Deserialize, Serialize};
 use serde_json::{from_slice, Value};
 use std::fs::{File, OpenOptions};
@@ -48,7 +48,6 @@ impl Site {
         let headers = req.headers();
         match self {
             GitHub => {
-                // TODO
                 if let Some(secret) = &project.secret {
                     if let Some(header) = headers.get("X-Hub-Signature") {
                         if let Ok(s) = header.to_str() {
