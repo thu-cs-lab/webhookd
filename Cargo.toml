@@ -3,10 +3,10 @@ name = "webhookd"
 version = "0.1.2"
 authors = ["Jiajie Chen <jiegec@qq.com>"]
 edition = "2018"
-description = "Git webhook daemon to run scripts on trigger"
+description = "GitLab/GitHub webhook daemon to run scripts on trigger"
 repository = "https://github.com/jiegec/webhookd"
 readme = "README.md"
-keywords = ["webhook", "gitlab"]
+keywords = ["webhook", "gitlab", "github"]
 license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
