@@ -1,6 +1,4 @@
 # webhookd
-[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fjiegec%2Fwebhookd.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fjiegec%2Fwebhookd?ref=badge_shield)
-
 
 A simple GitLab/GitHub web hooks daemon. Run scripts whenever hook is triggered.
 
@@ -43,4 +41,5 @@ Environment="WEBHOOKD_CONFIG=/path/to/config.toml"
 Then, run `sudo systemctl enable --now webhookd` to activate.
 
 ## License
-[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fjiegec%2Fwebhookd.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fjiegec%2Fwebhookd?ref=badge_large)
+
+Licensed under MIT license.
