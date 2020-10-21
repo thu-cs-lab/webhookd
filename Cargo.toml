@@ -7,7 +7,7 @@ description = "GitLab/GitHub webhook daemon to run scripts on trigger"
 repository = "https://github.com/jiegec/webhookd"
 readme = "README.md"
 keywords = ["webhook", "gitlab", "github"]
-license = "MIT"
+license = "GPL-3.0-or-later"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

@@ -42,4 +42,4 @@ Then, run `sudo systemctl enable --now webhookd` to activate.
 
 ## License
 
-Licensed under MIT license.
+Licensed under GPL-3.0-or-later license.
