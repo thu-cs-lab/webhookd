@@ -53,61 +53,64 @@ impl Site {
                         if let Ok(s) = header.to_str() {
                             if !s.starts_with("sha1=") {
                                 warn!("X-Hub-Signature is invalid for {}, skipping", project.name);
-                                return false;
-                            }
-                            if let Ok(signature) = hex::decode(&s.as_bytes()[5..]) {
+                                false
+                            } else if let Ok(signature) = hex::decode(&s.as_bytes()[5..]) {
                                 let key = hmac::Key::new(
                                     hmac::HMAC_SHA1_FOR_LEGACY_USE_ONLY,
                                     secret.as_bytes(),
                                 );
                                 if hmac::verify(&key, bytes, &signature).is_ok() {
-                                    return true;
+                                    true
                                 } else {
                                     warn!(
                                         "X-Hub-Signature HMAC verification failed for {}, skipping",
                                         project.name
                                     );
-                                    return false;
+                                    false
                                 }
                             } else {
                                 warn!(
                                     "X-Hub-Signature is not valid hex string for {}, skipping",
                                     project.name
                                 );
-                                return false;
+                                false
                             }
                         } else {
                             warn!("X-Hub-Signature is invalid for {}, skipping", project.name);
-                            return false;
+                            false
                         }
                     } else {
                         warn!("X-Hub-Signature not found for {}, skipping", project.name);
-                        return false;
+                        false
                     }
+                } else {
+                    false
                 }
-                true
             }
             GitLab => {
                 if let Some(token) = &project.token {
                     if let Some(header) = headers.get("X-Gitlab-Token") {
                         if let Ok(s) = header.to_str() {
-                            if s != token {
+                            if s == token {
+                                true
+                            } else {
                                 warn!(
                                     "X-Gitlab-Token mismatch for project {}, skipping",
                                     project.name
                                 );
-                                return false;
+                                false
                             }
                         } else {
                             warn!("X-Gitlab-Token is invalid for {}, skipping", project.name);
-                            return false;
+                            false
                         }
                     } else {
                         warn!("X-Gitlab-Token not found for {}, skipping", project.name);
-                        return false;
+                        false
                     }
+                } else {
+                    false
                 }
-                true
             }
         }
     }
