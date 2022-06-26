@@ -12,6 +12,7 @@ stdout = "stdout.log" # optional, append stdout to file
 stderr = "stderr.log" # optional, append stderr to file
 token = "REDACTED" # optional, match X-Gitlab-Token header when set
 secret = "REDACTED" # optional, verify X-Hub-Signature when set
+save_body = false # optional, save webhook body to temporary file and pass the path to program via env WEBHOOKD_BODY, default to false
 
 # A complete example
 [[project]]
@@ -21,3 +22,4 @@ exec = "echo test"
 working_directory = "/"
 stdout = "stdout.log"
 secret = "secret"
+save_body = true

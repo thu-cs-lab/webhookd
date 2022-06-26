@@ -1,3 +1,4 @@
+use actix_web::web::Buf;
 use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer};
 use hex;
 use log::*;
@@ -5,10 +6,11 @@ use ring::hmac;
 use serde_derive::{Deserialize, Serialize};
 use serde_json::{from_slice, Value};
 use std::fs::{File, OpenOptions};
-use std::io::Read;
+use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use structopt::StructOpt;
+use tempfile::NamedTempFile;
 
 #[derive(StructOpt)]
 struct Args {
@@ -31,6 +33,7 @@ struct Project {
     endpoint: Option<String>,
     stdout: Option<String>,
     stderr: Option<String>,
+    save_body: Option<bool>,
     // gitlab
     token: Option<String>,
     // github
@@ -162,11 +165,29 @@ fn get_stdio(project: &Project, path: &Option<String>) -> Stdio {
     stdio
 }
 
-async fn spawn_process(project: Project) {
+async fn spawn_process(project: Project, body: web::Bytes) {
     info!(
         "spawning {:?} in {}",
         project.exec, project.working_directory
     );
+
+    let mut envs = vec![];
+    let mut temp_file = None;
+    if project.save_body == Some(true) {
+        match NamedTempFile::new() {
+            Ok(file) => {
+                info!("Saving HTTP body to file {:?}", file.path());
+                if let Err(err) = file.as_file().write_all(body.bytes()) {
+                    warn!("Failed to write to temporary file: {:?}", err);
+                }
+                envs.push(("WEBHOOKD_BODY", file.path().to_string_lossy().to_string()));
+                temp_file = Some(file);
+            }
+            Err(err) => {
+                warn!("Failed to create temporary file: {:?}", err);
+            }
+        }
+    }
 
     let stdout = get_stdio(&project, &project.stdout);
     let stderr = get_stdio(&project, &project.stderr);
@@ -176,8 +197,12 @@ async fn spawn_process(project: Project) {
         .stdout(stdout)
         .stderr(stderr)
         .current_dir(&project.working_directory)
+        .envs(envs)
         .status();
     info!("Process {:?} exited with {:?}", project.exec, result);
+
+    // clear the temp file
+    drop(temp_file);
 }
 
 async fn handler(req: HttpRequest, bytes: web::Bytes, config: web::Data<Config>) -> HttpResponse {
@@ -210,11 +235,12 @@ async fn handler(req: HttpRequest, bytes: web::Bytes, config: web::Data<Config>)
                 continue;
             }
             info!("Triggering project {}", project.name);
-            actix::spawn(spawn_process(project.clone()));
+
+            actix::spawn(spawn_process(project.clone(), bytes.clone()));
             triggered += 1;
         }
     }
-    info!("{} projects are triggered.", triggered);
+    info!("{} projects are triggered", triggered);
     HttpResponse::Ok().body("")
 }
 
