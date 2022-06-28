@@ -46,6 +46,13 @@ enum Site {
 }
 
 impl Site {
+    fn get_name(&self) -> &'static str {
+        match self {
+            Site::GitHub => "github",
+            Site::GitLab => "gitlab",
+        }
+    }
+
     fn verify(&self, req: &HttpRequest, bytes: &web::Bytes, project: &Project) -> bool {
         use Site::*;
         let headers = req.headers();
@@ -165,7 +172,7 @@ fn get_stdio(project: &Project, path: &Option<String>) -> Stdio {
     stdio
 }
 
-async fn spawn_process(project: Project, body: web::Bytes) {
+async fn spawn_process(project: Project, body: web::Bytes, env: Vec<(&str, String)>) {
     info!(
         "spawning {:?} in {}",
         project.exec, project.working_directory
@@ -188,6 +195,8 @@ async fn spawn_process(project: Project, body: web::Bytes) {
             }
         }
     }
+
+    envs.extend(env);
 
     let stdout = get_stdio(&project, &project.stdout);
     let stderr = get_stdio(&project, &project.stderr);
@@ -236,7 +245,13 @@ async fn handler(req: HttpRequest, bytes: web::Bytes, config: web::Data<Config>)
             }
             info!("Triggering project {}", project.name);
 
-            actix::spawn(spawn_process(project.clone(), bytes.clone()));
+            let envs = vec![
+                ("WEBHOOKD_ACTION", action.clone().to_string()),
+                ("WEBHOOKD_SITE", site.get_name().to_string()),
+                ("WEBHOOKD_PROJECT", project.name.clone())
+            ];
+
+            actix::spawn(spawn_process(project.clone(), bytes.clone(), envs.clone()));
             triggered += 1;
         }
     }
