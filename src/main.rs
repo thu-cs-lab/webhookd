@@ -259,7 +259,7 @@ async fn handler(req: HttpRequest, bytes: web::Bytes, config: web::Data<Config>)
     HttpResponse::Ok().body("")
 }
 
-#[actix_rt::main]
+#[actix_web::main]
 async fn main() -> std::io::Result<()> {
     env_logger::init();
     let args = Args::from_args();
