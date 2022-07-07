@@ -4,7 +4,7 @@ listen_addr = "0.0.0.0:8000" # optional
 name = "REDACTED"
 # For GitLab, it is matched against "object_kind"
 # For GitHub, it is matched against X-GitHub-Event header
-event = "push"
+event = "push" # optional, do not filter if empty
 exec = "echo $PWD"
 working_directory = "REDACTED"
 endpoint = "/" # optional, match the url path when set

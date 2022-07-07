@@ -27,7 +27,7 @@ struct Config {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 struct Project {
     name: String,
-    event: String,
+    event: Option<String>,
     exec: String,
     working_directory: String,
     endpoint: Option<String>,
@@ -240,15 +240,18 @@ async fn handler(req: HttpRequest, bytes: web::Bytes, config: web::Data<Config>)
             if !site.verify(&req, &bytes, &project) {
                 continue;
             }
-            if action != project.event {
-                continue;
+            if let Some(event) = &project.event {
+                // filter by event
+                if action != event {
+                    continue;
+                }
             }
             info!("Triggering project {}", project.name);
 
             let envs = vec![
                 ("WEBHOOKD_ACTION", action.clone().to_string()),
                 ("WEBHOOKD_SITE", site.get_name().to_string()),
-                ("WEBHOOKD_PROJECT", project.name.clone())
+                ("WEBHOOKD_PROJECT", project.name.clone()),
             ];
 
             actix::spawn(spawn_process(project.clone(), bytes.clone(), envs.clone()));
