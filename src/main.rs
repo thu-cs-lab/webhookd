@@ -1,4 +1,4 @@
-use actix_web::web::Buf;
+use actix_web::web::{Buf, Data};
 use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer};
 use hex;
 use log::*;
@@ -184,7 +184,7 @@ async fn spawn_process(project: Project, body: web::Bytes, env: Vec<(&str, Strin
         match NamedTempFile::new() {
             Ok(file) => {
                 info!("Saving HTTP body to file {:?}", file.path());
-                if let Err(err) = file.as_file().write_all(body.bytes()) {
+                if let Err(err) = file.as_file().write_all(&*body) {
                     warn!("Failed to write to temporary file: {:?}", err);
                 }
                 envs.push(("WEBHOOKD_BODY", file.path().to_string_lossy().to_string()));
@@ -277,9 +277,9 @@ async fn main() -> std::io::Result<()> {
         .unwrap_or("127.0.0.1:8000".to_owned());
     HttpServer::new(move || {
         App::new()
-            .data(config.clone())
+            .app_data(Data::new(config.clone()))
             .wrap(middleware::Logger::default())
-            .default_service(web::resource("").route(web::post().to(handler)))
+            .default_service(web::post().to(handler))
     })
     .bind(listen_addr)?
     .run()
