@@ -1,4 +1,4 @@
-use actix_web::web::{Buf, Data};
+use actix_web::web::Data;
 use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer};
 use hex;
 use log::*;
