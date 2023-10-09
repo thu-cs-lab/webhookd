@@ -1,5 +1,6 @@
 use actix_web::web::Data;
 use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer};
+use clap::Parser;
 use hex;
 use log::*;
 use ring::hmac;
@@ -9,12 +10,11 @@ use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
-use structopt::StructOpt;
 use tempfile::NamedTempFile;
 
-#[derive(StructOpt)]
+#[derive(Parser)]
 struct Args {
-    #[structopt(short, long)]
+    #[arg(short, long)]
     config: PathBuf,
 }
 
@@ -265,7 +265,7 @@ async fn handler(req: HttpRequest, bytes: web::Bytes, config: web::Data<Config>)
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     env_logger::init();
-    let args = Args::from_args();
+    let args = Args::parse();
     let mut file = File::open(&args.config)?;
     let mut content = String::new();
     file.read_to_string(&mut content)?;
