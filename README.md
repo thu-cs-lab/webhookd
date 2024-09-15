@@ -12,7 +12,7 @@ There are two ways:
 > cargo install cargo-deb
 > git clone https://github.com/jiegec/webhookd.git
 > cd webhookd
-> cargo deb --install
+> cargo deb --separate-debug-symbols --compress-debug-symbols --install
 ```
 
 ## Configuration
