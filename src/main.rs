@@ -26,6 +26,7 @@ use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use tempfile::NamedTempFile;
+use toml::de::Error;
 
 #[derive(Parser)]
 struct Args {
@@ -264,7 +265,7 @@ async fn handler(req: HttpRequest, bytes: web::Bytes, config: web::Data<Config>)
             info!("Triggering project {}", project.name);
 
             let envs = vec![
-                ("WEBHOOKD_ACTION", action.clone().to_string()),
+                ("WEBHOOKD_ACTION", action.to_string()),
                 ("WEBHOOKD_SITE", site.get_name().to_string()),
                 ("WEBHOOKD_PROJECT", project.name.clone()),
             ];
@@ -284,7 +285,11 @@ async fn main() -> std::io::Result<()> {
     let mut file = File::open(&args.config)?;
     let mut content = String::new();
     file.read_to_string(&mut content)?;
-    let config: Config = toml::from_str(&content)?;
+    // see: https://github.com/toml-rs/toml/issues/591
+    let config: Config = toml::from_str(&content).map_err(|err: Error| {
+        error!("Failed to parse config: {:?}", err);
+        std::io::Error::new(std::io::ErrorKind::InvalidData, err)
+    })?;
     info!("using config {:?}", config);
     let listen_addr = config
         .listen_addr
