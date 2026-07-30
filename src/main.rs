@@ -78,7 +78,7 @@ impl Site {
                     if let Some(header) = headers.get("X-Hub-Signature") {
                         if let Ok(s) = header.to_str() {
                             if !s.starts_with("sha1=") {
-                                warn!("X-Hub-Signature is invalid for {}, skipping", project.name);
+                                warn!(project = project.name; "X-Hub-Signature is invalid for {}, skipping", project.name);
                                 false
                             } else if let Ok(signature) = hex::decode(&s.as_bytes()[5..]) {
                                 let key = hmac::Key::new(
@@ -89,24 +89,24 @@ impl Site {
                                     true
                                 } else {
                                     warn!(
-                                        "X-Hub-Signature HMAC verification failed for {}, skipping",
+                                        project = project.name; "X-Hub-Signature HMAC verification failed for {}, skipping",
                                         project.name
                                     );
                                     false
                                 }
                             } else {
                                 warn!(
-                                    "X-Hub-Signature is not valid hex string for {}, skipping",
+                                    project = project.name; "X-Hub-Signature is not valid hex string for {}, skipping",
                                     project.name
                                 );
                                 false
                             }
                         } else {
-                            warn!("X-Hub-Signature is invalid for {}, skipping", project.name);
+                            warn!(project = project.name; "X-Hub-Signature is invalid for {}, skipping", project.name);
                             false
                         }
                     } else {
-                        warn!("X-Hub-Signature not found for {}, skipping", project.name);
+                        warn!(project = project.name; "X-Hub-Signature not found for {}, skipping", project.name);
                         false
                     }
                 } else {
@@ -121,17 +121,17 @@ impl Site {
                                 true
                             } else {
                                 warn!(
-                                    "X-Gitlab-Token mismatch for project {}, skipping",
+                                    project = project.name; "X-Gitlab-Token mismatch for project {}, skipping",
                                     project.name
                                 );
                                 false
                             }
                         } else {
-                            warn!("X-Gitlab-Token is invalid for {}, skipping", project.name);
+                            warn!(project = project.name; "X-Gitlab-Token is invalid for {}, skipping", project.name);
                             false
                         }
                     } else {
-                        warn!("X-Gitlab-Token not found for {}, skipping", project.name);
+                        warn!(project = project.name; "X-Gitlab-Token not found for {}, skipping", project.name);
                         false
                     }
                 } else {
@@ -174,8 +174,8 @@ fn get_stdio(project: &Project, path: &Option<String>) -> Stdio {
             Ok(file) => stdio_file = Some(file),
             Err(err) => {
                 warn!(
-                    "Can't open file {} for project {}: {:?}",
-                    stdio_path, project.name, err
+                    project = project.name; "Can't open file {}: {:?}",
+                    stdio_path, err
                 );
             }
         }
@@ -190,7 +190,7 @@ fn get_stdio(project: &Project, path: &Option<String>) -> Stdio {
 
 async fn spawn_process(project: Project, body: web::Bytes, env: Vec<(&str, String)>) {
     info!(
-        "spawning {:?} in {}",
+        project = project.name; "spawning {:?} in {}",
         project.exec, project.working_directory
     );
 
@@ -199,15 +199,15 @@ async fn spawn_process(project: Project, body: web::Bytes, env: Vec<(&str, Strin
     if project.save_body == Some(true) {
         match NamedTempFile::new() {
             Ok(file) => {
-                info!("Saving HTTP body to file {:?}", file.path());
+                info!(project = project.name; "Saving HTTP body to file {:?}", file.path());
                 if let Err(err) = file.as_file().write_all(&*body) {
-                    warn!("Failed to write to temporary file: {:?}", err);
+                    warn!(project = project.name; "Failed to write to temporary file: {:?}", err);
                 }
                 envs.push(("WEBHOOKD_BODY", file.path().to_string_lossy().to_string()));
                 temp_file = Some(file);
             }
             Err(err) => {
-                warn!("Failed to create temporary file: {:?}", err);
+                warn!(project = project.name; "Failed to create temporary file: {:?}", err);
             }
         }
     }
@@ -224,7 +224,7 @@ async fn spawn_process(project: Project, body: web::Bytes, env: Vec<(&str, Strin
         .current_dir(&project.working_directory)
         .envs(envs)
         .status();
-    info!("Process {:?} exited with {:?}", project.exec, result);
+    info!(project = project.name; "Process {:?} exited with {:?}", project.exec, result);
 
     // clear the temp file
     drop(temp_file);
